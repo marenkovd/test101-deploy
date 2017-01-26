@@ -1,0 +1,33 @@
+- name: install dummy kubes on coreos
+  hosts: coreos
+  serial: 1
+  gather_facts: False
+  tasks:
+    - name: upload cloud-config.yaml
+      copy:
+        src: ./cloud-config.yaml
+        dest: /home/core/cloud-config-test101.yaml
+    - name: upload kube service yaml
+      copy:
+        src: ./test101-service.yaml
+        dest: /home/core/test101-service.yaml
+    - name: upload kube deployment yaml
+      copy:
+        src: ./test101-deployment.yaml
+        dest: /home/core/test101-deployment.yaml
+
+    - name: run cloud-config
+      shell: coreos-cloudinit --from-file=/home/core/cloud-config-test101.yaml
+      become: true
+
+    - name: Pull latest test101 image
+      shell: docker pull marenkovd/test101:latest
+    
+    - name: Add test101 service
+      shell: /home/core/kubectl create -f /home/core/test101-service.yaml
+     
+    - name: Add test101 deployment
+      shell: /home/core/kubectl create -f /home/core/test101-deployment.yaml --record
+  
+    - name: Patch rollout delay
+      shell: /home/core/kubectl patch deployment/test101-deployment -p '{"spec":{"progressDeadlineSeconds":60}}'
